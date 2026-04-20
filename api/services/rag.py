@@ -2,6 +2,7 @@ from groq import Groq
 from api.config.settings import settings
 from api.models.rag import RAGResponse
 from api.services.search import SearchService
+from api.config.prompts import RAG_PROMPT
 
 
 class RAGService:
@@ -12,14 +13,7 @@ class RAGService:
     def generate_answer(self, query: str, limit: int = 3) -> RAGResponse:
         search_response = self.search_service.search(query, limit)
         context = "\n\n".join(result.text for result in search_response.results)
-        prompt = f"""Based on the context provided, answer the following question.
-        
-        Context:
-        {context}
-        
-        Question: {query}
-        Answer:
-        """
+        prompt = RAG_PROMPT.format(context=context, query=query)
 
         response = self.client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
