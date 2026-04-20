@@ -154,16 +154,5 @@ cython_debug/
 # VS Code
 .vscode/
 
-# MacOS
-.DS_Store
-
-# Rust / Tauri
-/target/
-/src-tauri/target/
-/src-tauri/gen/
-node_modules/
-dist-tauri/
-*.db
-*.db-journal
-*.sqlite
-*.sqlite-journal
+# fastembed cache
+.fastembed_cache
