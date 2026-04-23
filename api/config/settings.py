@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     colbert_model: str = "colbert-ir/colbertv2.0"
     groq_api_key: str
     groq_model: str = "llama-3.1-8b-instant"
+    edgar_email: str = ""
 
 
 settings = Settings()
