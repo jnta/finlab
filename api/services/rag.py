@@ -2,7 +2,7 @@ from groq import Groq
 from api.config.settings import settings
 from api.models.rag import RAGResponse
 from api.services.search import SearchService
-from api.config.prompts import RAG_PROMPT
+from api.config.prompts.rag import RAG_PROMPT
 
 
 class RAGService:
