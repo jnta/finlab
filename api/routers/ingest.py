@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 from api.config.settings import settings
 from api.services.ingest import IngestService
-from api.models.ingest import IngestRequest, IngestResponse
+from api.models.ticker_ingest import TickerIngestRequest, IngestResponse
+from api.models.news_ingest import NewsIngestRequest
 
-router = APIRouter()
+router = APIRouter(prefix="/ingest", tags=["ingest"])
 
 ingest_service = IngestService(
     qdrant_url=settings.qdrant_url,
@@ -11,7 +12,12 @@ ingest_service = IngestService(
     collection_name=settings.collection_name,
 )
 
-@router.post("/ingest", response_model=IngestResponse)
-def ingest(request: IngestRequest):
-    message = ingest_service.ingest(request.ticker)
+@router.post("/ticker", response_model=IngestResponse)
+def ingest_ticker(request: TickerIngestRequest):
+    message = ingest_service.ingest_ticker(request.ticker)
+    return IngestResponse(message=message)
+
+@router.post("/news", response_model=IngestResponse)
+def ingest_news(request: NewsIngestRequest):
+    message = ingest_service.ingest_news(request.ticker, request.max_stories)
     return IngestResponse(message=message)

@@ -6,7 +6,9 @@ from api.config.settings import settings
 from api.services.embeddings import EmbeddingsService
 
 from api.clients.edgar_client import EdgarClient
+from api.clients.news_client import NewsClient
 from api.utils.semantic_chunker import SemanticChunker
+from api.utils.simple_chunker import SimpleChunker
 
 
 class IngestService:
@@ -15,9 +17,13 @@ class IngestService:
         self.collection_name = collection_name
         self.embeddings_service = EmbeddingsService()
         self.edgar_client = EdgarClient(settings.edgar_email)
-        self.chunker = SemanticChunker(embed_model=self.embeddings_service.dense_model, max_tokens=300)
+        self.news_client = NewsClient()
+        self.chunker = SemanticChunker(
+            embed_model=self.embeddings_service.dense_model, max_tokens=300
+        )
+        self.simple_chunker = SimpleChunker()
 
-    def ingest(self, ticker: str) -> str:
+    def ingest_ticker(self, ticker: str) -> str:
         try:
             count_result = self.qdrant.count(
                 collection_name=self.collection_name,
@@ -93,3 +99,49 @@ class IngestService:
             )
 
         return f"Ingestion completed successfully for {ticker}!"
+
+    def ingest_news(self, ticker: str, max_stories: int = 10) -> str:
+        news_data = self.news_client.fetch_news(ticker, max_stories)
+        if not news_data:
+            return f"No news found for {ticker}."
+
+        all_chunks = []
+        for item in news_data:
+            text = item["text"]
+            metadata = item["metadata"]
+            chunks = self.simple_chunker.create_chunks(text)
+            for chunk in chunks:
+                all_chunks.append({"text": chunk, "metadata": metadata})
+
+        points = []
+        for chunk_data in all_chunks:
+            chunk = chunk_data["text"]
+            metadata = chunk_data["metadata"]
+
+            dense_emb = list(
+                self.embeddings_service.dense_model.passage_embed([chunk])
+            )[0].tolist()
+            sparse_emb = list(
+                self.embeddings_service.sparse_model.passage_embed([chunk])
+            )[0].as_object()
+            colbert_emb = list(
+                self.embeddings_service.colbert_model.passage_embed([chunk])
+            )[0].tolist()
+
+            point = models.PointStruct(
+                id=str(uuid.uuid4()),
+                vector={
+                    "dense": dense_emb,
+                    "sparse_vector": sparse_emb,
+                    "colbert": colbert_emb,
+                },
+                payload={"text": chunk, "metadata": metadata},
+            )
+            points.append(point)
+
+        if points:
+            self.qdrant.upload_points(
+                collection_name=self.collection_name, points=points, batch_size=5
+            )
+
+        return f"News ingestion completed successfully for {ticker}!"
