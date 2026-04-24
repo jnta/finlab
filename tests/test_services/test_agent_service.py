@@ -60,15 +60,19 @@ async def test_analyze_orchestration(agent_service):
         time_horizon="Medium-term",
     )
 
+    # Mock ticker extractor
+    agent_service.ticker_extractor.extract_ticker = MagicMock(return_value="AAPL")
+
     # Mock _generate_completion to return these models in order
     agent_service._generate_completion = AsyncMock(side_effect=[
         fundamental, momentum, sentiment, final
     ])
 
-    response = await agent_service.analyze(ticker="AAPL", limit=1)
+    response = await agent_service.analyze(query="tell me about apple", limit=1)
 
     assert isinstance(response, AgentResponse)
     assert response.ticker == "AAPL"
+    assert response.query == "tell me about apple"
     assert response.fundamental_analysis.investment_grade == "A"
     
     # Verify search service was called
@@ -79,12 +83,12 @@ async def test_analyze_orchestration(agent_service):
 
 @pytest.mark.asyncio
 async def test_generate_completion(agent_service):
-    agent_service.groq_client = AsyncMock()
+    agent_service.client = AsyncMock()
     # When instructor is used, it returns the model instance directly
     mock_model = MagicMock(spec=FundamentalAnalysis)
-    agent_service.groq_client.chat.completions.create.return_value = mock_model
+    agent_service.client.chat.completions.create.return_value = mock_model
 
     result = await agent_service._generate_completion("test prompt", FundamentalAnalysis)
     
     assert result == mock_model
-    agent_service.groq_client.chat.completions.create.assert_called_once()
+    agent_service.client.chat.completions.create.assert_called_once()

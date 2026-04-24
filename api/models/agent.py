@@ -77,11 +77,9 @@ class FinalRecommendation(BaseModel):
 
 
 class AgentRequest(BaseModel):
-    ticker: str = Field(
+    query: str = Field(
         ...,
-        description="Stock ticker symbol (e.g., AAPL, TSLA)",
-        min_length=1,
-        max_length=10,
+        description="the user query that needs to be processed.",
     )
     limit: int = Field(
         3,
@@ -90,11 +88,16 @@ class AgentRequest(BaseModel):
         le=10,
     )
 
-    model_config = {"json_schema_extra": {"examples": [{"ticker": "AAPL", "limit": 3}]}}
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"query": "tell me about apple", "limit": 3}]
+        }
+    }
 
 
 class AgentResponse(BaseModel):
-    ticker: str = Field(..., description="The ticker symbol analyzed")
+    query: str = Field(..., description="The original query")
+    ticker: str = Field(..., description="The ticker symbol of the company")
     fundamental_analysis: FundamentalAnalysis = Field(
         ..., description="LLM-generated fundamental analysis"
     )
@@ -112,6 +115,7 @@ class AgentResponse(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
+                    "query": "tell me about apple",
                     "ticker": "AAPL",
                     "fundamental_analysis": {
                         "overall_investment_thesis": "Apple displays robust revenue growth driven by services and iPhone 15 demand...",

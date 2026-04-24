@@ -1,3 +1,4 @@
+from api.services.ticker_extractor import TickerExtractionService
 from api.models.agent import FinalRecommendation
 import asyncio
 from typing import Any, Dict, List
@@ -27,6 +28,7 @@ class AgentService:
         self.search_service = search_service
         self.groq_client = AsyncGroq(api_key=settings.groq_api_key)
         self.client = instructor.from_groq(self.groq_client, mode=instructor.Mode.JSON)
+        self.ticker_extractor = TickerExtractionService()
 
     def _run_queries(self, queries: list[str], limit: int, filter: Dict[str, Any]):
         all_results = []
@@ -36,7 +38,7 @@ class AgentService:
         return "\n\n".join(all_results)
 
     async def _generate_completion(self, prompt: str, response_model=None):
-        return await self.groq_client.chat.completions.create(
+        return await self.client.chat.completions.create(
             model=settings.groq_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
@@ -62,7 +64,10 @@ class AgentService:
         prompt = SENTIMENT_PROMPT.format(context=context, ticker=ticker)
         return await self._generate_completion(prompt, SentimentAnalysis)
 
-    async def analyze(self, ticker: str, limit: int = 3):
+    async def analyze(self, query: str, limit: int = 3):
+        ticker = self.ticker_extractor.extract_ticker(query)
+        if not ticker:
+            raise ValueError("Could not extract ticker symbol from the query.")
         (
             fundamental_analysis,
             momentum_analysis,
@@ -82,6 +87,7 @@ class AgentService:
         )
         return AgentResponse(
             ticker=ticker,
+            query=query,
             final_recommendation=final_recommendation,
             fundamental_analysis=fundamental_analysis,
             momentum_analysis=momentum_analysis,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from api.config.settings import settings
 from api.services.search import SearchService
 from api.services.agent import AgentService
@@ -17,4 +17,7 @@ agent_service = AgentService(search_service=search_service)
 
 @router.post("/analyze", response_model=AgentResponse)
 async def analyze(request: AgentRequest):
-    return await agent_service.analyze(ticker=request.ticker, limit=request.limit)
+    try:
+        return await agent_service.analyze(request.query, request.limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

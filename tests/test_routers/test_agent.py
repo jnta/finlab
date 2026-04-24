@@ -43,6 +43,7 @@ async def test_analyze_endpoint(client):
         time_horizon="Medium-term",
     )
     mock_response = AgentResponse(
+        query="tell me about apple",
         ticker="AAPL",
         final_recommendation=final,
         fundamental_analysis=fundamental,
@@ -53,15 +54,16 @@ async def test_analyze_endpoint(client):
     with patch("api.routers.agent.agent_service.analyze", new_callable=AsyncMock) as mock_analyze:
         mock_analyze.return_value = mock_response
         
-        response = client.post("/agent/analyze", json={"ticker": "AAPL", "limit": 3})
+        response = client.post("/agent/analyze", json={"query": "tell me about apple", "limit": 3})
         
         assert response.status_code == 200
         data = response.json()
         assert data["ticker"] == "AAPL"
+        assert data["query"] == "tell me about apple"
         assert data["final_recommendation"]["action"] == "BUY"
-        mock_analyze.assert_called_once_with(ticker="AAPL", limit=3)
+        mock_analyze.assert_called_once_with("tell me about apple", 3)
 
 def test_analyze_validation_error(client):
-    # Missing ticker
+    # Missing query
     response = client.post("/agent/analyze", json={"limit": 3})
     assert response.status_code == 422

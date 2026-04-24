@@ -13,15 +13,16 @@ from api.models.search import SearchRequest
 
 def test_agent_request_validation():
     # Valid
-    req = AgentRequest(ticker="MSFT", limit=10)
-    assert req.ticker == "MSFT"
+    req = AgentRequest(query="tell me about Microsoft", limit=10)
+    assert req.query == "tell me about Microsoft"
     assert req.limit == 10
 
     # Default limit
-    req = AgentRequest(ticker="TSLA")
+    req = AgentRequest(query="TSLA")
+    assert req.query == "TSLA"
     assert req.limit == 3
 
-    # Invalid: missing ticker
+    # Invalid: missing query
     with pytest.raises(ValidationError):
         AgentRequest()
 
@@ -70,6 +71,7 @@ def test_agent_response_serialization():
     )
 
     res = AgentResponse(
+        query="tell me about apple",
         ticker="AAPL",
         final_recommendation=final,
         fundamental_analysis=fundamental,
@@ -78,4 +80,5 @@ def test_agent_response_serialization():
     )
     data = res.model_dump()
     assert data["ticker"] == "AAPL"
+    assert data["query"] == "tell me about apple"
     assert data["final_recommendation"]["action"] == "BUY"
