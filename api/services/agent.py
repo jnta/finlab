@@ -1,4 +1,5 @@
 import asyncio
+from typing import Dict, Any, List
 
 from api.config.prompts.aggregation import AGGREGATION_PROMPT
 from api.config.prompts.fundamental import FUNDAMENTAL_PROMPT
@@ -18,10 +19,10 @@ class AgentService:
         self.search_service = search_service
         self.groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
-    def _run_queries(self, queries: list[str], limit: int):
+    def _run_queries(self, queries: list[str], limit: int, filter: Dict[str, Any]):
         all_results = []
         for query in queries:
-            search_results = self.search_service.search(query, limit)
+            search_results = self.search_service.search(query, limit, filter)
             all_results.extend([result.text for result in search_results.results])
         return "\n\n".join(all_results)
 
@@ -33,19 +34,22 @@ class AgentService:
         )
         return response.choices[0].message.content
 
-    async def _analyze_fundamental(self, limit: int):
-        context = self._run_queries(FUNDAMENTAL_QUERIES, limit)
+    async def _analyze_fundamental(self, ticker: str, limit: int):
+        filter = {"ticker": ticker, "form_type": "10-K"}
+        context = self._run_queries(FUNDAMENTAL_QUERIES, limit, filter)
         prompt = FUNDAMENTAL_PROMPT.format(context=context)
         return await self._generate_completion(prompt)
 
-    async def _analyze_momentum(self, limit: int):
-        context = self._run_queries(MOMENTUM_QUERIES, limit)
+    async def _analyze_momentum(self, ticker: str, limit: int):
+        filter = {"ticker": ticker, "form_type": "10-Q"}
+        context = self._run_queries(MOMENTUM_QUERIES, limit, filter)
         prompt = MOMENTUM_PROMPT.format(context=context)
         return await self._generate_completion(prompt)
 
     async def _analyze_sentiment(self, ticker: str, limit: int):
         query = SENTIMENT_QUERY_TEMPLATE.format(ticker=ticker)
-        context = self._run_queries([query], limit)
+        filter = {"ticker": ticker, "source": "yahoo_finance"}
+        context = self._run_queries([query], limit, filter)
         prompt = SENTIMENT_PROMPT.format(context=context, ticker=ticker)
         return await self._generate_completion(prompt)
 
@@ -55,8 +59,8 @@ class AgentService:
             momentum_analysis,
             sentiment_analysis,
         ) = await asyncio.gather(
-            self._analyze_fundamental(limit),
-            self._analyze_momentum(limit),
+            self._analyze_fundamental(ticker, limit),
+            self._analyze_momentum(ticker, limit),
             self._analyze_sentiment(ticker, limit),
         )
         aggregation_prompt = AGGREGATION_PROMPT.format(

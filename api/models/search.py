@@ -1,3 +1,4 @@
+from typing import Optional, Dict, Any
 from typing import List
 from pydantic import BaseModel, Field
 
@@ -5,13 +6,21 @@ from pydantic import BaseModel, Field
 class SearchRequest(BaseModel):
     query: str = Field(..., description="The search query")
     limit: int = Field(3, description="Maximum number of results to return")
+    filters: Optional[Dict[str, Any]] = Field(
+        None, description="Filters to apply to the search"
+    )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "query": "What are Apple's main risks?",
-                    "limit": 5
+                    "limit": 5,
+                    "filters": {
+                        "ticker": "AAPL",
+                        "form_type": "10-K",
+                        "source": "yahoo_finance",
+                    },
                 }
             ]
         }
@@ -29,7 +38,7 @@ class SearchResult(BaseModel):
                 {
                     "score": 0.89,
                     "text": "Apple faces supply chain challenges in Asia...",
-                    "metadata": {"ticker": "AAPL", "source": "news"}
+                    "metadata": {"ticker": "AAPL", "source": "news"},
                 }
             ]
         }
@@ -47,7 +56,7 @@ class SearchResponse(BaseModel):
                         {
                             "score": 0.89,
                             "text": "Apple faces supply chain challenges in Asia...",
-                            "metadata": {"ticker": "AAPL", "source": "news"}
+                            "metadata": {"ticker": "AAPL", "source": "news"},
                         }
                     ]
                 }
